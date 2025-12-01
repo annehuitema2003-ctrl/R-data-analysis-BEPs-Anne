@@ -30,8 +30,7 @@ setwd(scriptfolder_path)
 print(scriptfolder_path)
 
 data <- read_excel(
-  "C:/Users/RobiDattatreya/OneDrive - Delft University of Technology/BEP/R data analysis/BranchInes/Dataset/Riskperceptiondataset_201125.xlsx"  # vervang door de ECHTE naam van sheet 2
-)
+  "C:/Users/RobiDattatreya/OneDrive - Delft University of Technology/BEP/R data analysis/BranchInes/Datasets/Riskperceptiondataset_201125.xlsx")
 
 
 
@@ -46,6 +45,7 @@ colnames(data)
 
 library(poLCA)
 library(dplyr)
+select <- dplyr::select
 
 # Step 3: Pick the columns we use for risk perception, which are only the codes of the answers---------------------------------------
 data_lca <- data %>%
@@ -95,8 +95,7 @@ print(lca_model)
 #I put the path manual because my laptop crashed and I am on my roommates
 #laptop
 
-output_dir <- "C:/Users/tessa/OneDrive/BEP/BranchInes/Scripts_inesdattatreya/data_output"
-
+output_dir <- "C:/Users/RobiDattatreya/OneDrive - Delft University of Technology/BEP/R data analysis/BranchInes/Scripts_inesdattatreya/data_output"
 dir.create(output_dir, showWarnings = FALSE)
 
 sink(file.path(output_dir, "allsurveyanalysis_Step3.txt"))
@@ -129,7 +128,7 @@ sink()
 
 
 #again I use this code because I changed laptop
-output_dir <- "C:/Users/tessa/OneDrive/BEP/BranchInes/Scripts_inesdattatreya/data_output"
+output_dir <- "C:/Users/RobiDattatreya/OneDrive - Delft University of Technology/BEP/R data analysis/BranchInes/Scripts_inesdattatreya/data_output"
 
 dir.create(output_dir, showWarnings = FALSE)
 
@@ -228,9 +227,7 @@ print(fit_table)
 if(!require(writexl)) install.packages("writexl")
 library(writexl)
 
-# manual path on my roommates laptop
-output_dir <- "C:/Users/tessa/OneDrive/BEP/BranchInes/Scripts_inesdattatreya/fig_output"
-
+output_dir <- "C:/Users/RobiDattatreya/OneDrive - Delft University of Technology/BEP/R data analysis/BranchInes/Scripts_inesdattatreya/fig_output"
 
 dir.create(output_dir, showWarnings = FALSE, recursive = TRUE)
 
@@ -247,6 +244,14 @@ write_xlsx(fit_table,
 # Step 7: Visualisation----------------------------------------------------------------------------------------
 # Class membership probabilities from step 3
 lca_model$P
+
+#make a colour scheme to set colours for different classes
+class_cols <- c(
+  "Class 1" = "#777777",   # grijs
+  "Class 2" = "#8A0000",   # donkerrood
+  "Class 3" = "#FF6666"    # lichtrood
+)
+
 
 # Item-response probabilities from step 3
 lca_model$probs
@@ -269,7 +274,7 @@ plot_lca1 <- function(lca_model) {
     #probs[[i]]: the matrix of item-response probabilities for class i.
     #beside = TRUE: plots bars side-by-side (not stacked).
     
-    barplot(t(as.matrix(probs[[i]])), beside = TRUE, col = rainbow(ncol(probs[[i]])),
+    barplot(t(as.matrix(probs[[i]])), beside = TRUE, col = class_cols[1:ncol(probs[[i]])],
             main = paste("Question", i), xlab = "Classes", ylab = "Probability")
   }
 }
@@ -285,8 +290,7 @@ plot_lca1(lca_model)
 
 dev.off()
 
-scriptfolder_path <- "C:/Users/tessa/OneDrive/BEP/BranchInes/Scripts_inesdattatreya"
-
+scriptfolder_path <- "C:/Users/RobiDattatreya/OneDrive - Delft University of Technology/BEP/R data analysis/BranchInes/Scripts_inesdattatreya"
 
 setwd(scriptfolder_path)
 png(paste0("fig_output/","allsurveyanalysis_Output_website.png"), width = 1200, height = 600)
@@ -298,20 +302,41 @@ dev.off()
 install.packages("reshape2")
 library(reshape2)
 
+##  code with colour scheme:
 plot_lca_gg <- function(lca_model, save_path = NULL) {
+  library(ggplot2)
+  library(reshape2)
+  
   probs <- lca_model$probs
   num_classes <- length(probs)
+  
+  # kleurenschaal van lichtrood naar donkerrood
+  response_cols <- c(
+    "#FFCCCC",
+    "#FF9999",
+    "#FF6666",
+    "#FF3333",
+    "#CC0000",
+    "#800000"
+  )
   
   for (i in 1:num_classes) {
     # Convert class matrix to long format
     class_matrix <- as.matrix(probs[[i]])
     df <- as.data.frame(class_matrix)
     df$Question <- paste0("Class", 1:nrow(df))
-    df_long <- melt(df, id.vars = "Question", variable.name = "Response", value.name = "Probability")
+    
+    df_long <- melt(
+      df, 
+      id.vars = "Question",
+      variable.name = "Response",
+      value.name = "Probability"
+    )
     
     # Create ggplot
     p <- ggplot(df_long, aes(x = Question, y = Probability, fill = Response)) +
       geom_bar(stat = "identity", position = "dodge") +
+      scale_fill_manual(values = response_cols) +        # <<< HIER ZIT JE KLEURENPALET
       labs(title = paste("Item-Response Probabilities - Question", i),
            x = "Classes",
            y = "Response Probability") +
@@ -320,7 +345,8 @@ plot_lca_gg <- function(lca_model, save_path = NULL) {
     
     # Save or display
     if (!is.null(save_path)) {
-      ggsave(filename = paste0(save_path, "/LCA_Question_", i, ".png"), plot = p, width = 8, height = 5)
+      ggsave(filename = paste0(save_path, "/LCA_Question_", i, ".png"),
+             plot = p, width = 8, height = 5)
     } else {
       print(p)
     }
@@ -329,6 +355,12 @@ plot_lca_gg <- function(lca_model, save_path = NULL) {
 
 # Save plots to a folder
 plot_lca_gg(lca_model, save_path = "fig_output")
+
+# Step 8: Data categorisation------------------------------------------------------------------
+# Increase nrep to 10 or more to ensure stability and avoid local maxim
+final_model <- poLCA(f, data_lca, nclass = 3, nrep = 10)
+
+
 
 # Step 8: Data categorisation------------------------------------------------------------------
 # Increase nrep to 10 or more to ensure stability and avoid local maxim
@@ -467,31 +499,31 @@ df_list <- list()
 
 # Combine all questions: plot by Q1, Q2, Q3 etc
 
-# df_plot <- do.call(rbind, df_list)
+ df_plot <- do.call(rbind, df_list)
 # 
 # 
-# # for every latent class a different plot
-# for (class_name in unique(df_plot$LatentClass)) {
-#   df_class <- df_plot[df_plot$LatentClass == class_name, ]
-#   
-#   p <- ggplot(df_class, aes(x = Question, y = Probability, fill = Response)) +
-#     geom_bar(stat = "identity", position = "dodge") +
-#     labs(title = paste("Item-Response Profile -", class_name),
-#          x = "Vraag",
-#          y = "Probability") +
-#     theme_minimal() +
-#     theme(axis.text.x = element_text(angle = 45, hjust = 1))
+# for every latent class a different plot
+ for (class_name in unique(df_plot$LatentClass)) {
+   df_class <- df_plot[df_plot$LatentClass == class_name, ]
+   
+   p <- ggplot(df_class, aes(x = Question, y = Probability, fill = Response)) +
+     geom_bar(stat = "identity", position = "dodge") +
+     labs(title = paste("Item-Response Profile -", class_name),
+          x = "Vraag",
+          y = "Probability") +
+     theme_minimal() +
+     theme(axis.text.x = element_text(angle = 45, hjust = 1))
 #   # 
-#   ggsave(
-#     filename = paste0("fig_output/all_questions_together_", class_name, ".png"),
-#     plot = p,
-#     width = 10,
-#     height = 6,
-#     dpi = 300
-#   )
+   ggsave(
+     filename = paste0("fig_output/all_questions_together_", class_name, ".png"),
+     plot = p,
+     width = 10,
+     height = 6,
+     dpi = 300
+   )
 #   
-#   print(p)
-# }
+   print(p)
+ }
 
 #STEP 10: find out what are the mean answers per class so we can label the classes ------------------------------------------------------------------
 library(dplyr)
@@ -620,7 +652,7 @@ ggsave(
 
 
 # 
-output_dir <- "C:/Users/tessa/OneDrive/BEP/BranchInes/Scripts_inesdattatreya/fig_output"
+output_dir <- "C:/Users/RobiDattatreya/OneDrive - Delft University of Technology/BEP/R data analysis/BranchInes/Scripts_inesdattatreya/fig_output"
 dir.create(output_dir, showWarnings = FALSE, recursive = TRUE)
 
 # 7. Sla de tabel op als CSV en Excel in fig_output
@@ -694,7 +726,7 @@ if(!require(writexl)) install.packages("writexl")
 library(writexl)
 
 # Path to the output folder
-output_dir <- "C:/Users/tessa/OneDrive/BEP/BranchInes/Scripts_inesdattatreya/fig_output"
+output_dir <- "C:/Users/RobiDattatreya/OneDrive - Delft University of Technology/BEP/R data analysis/BranchInes/Scripts_inesdattatreya/fig_output"
 
 # Maak de map aan als die nog niet bestaat
 dir.create(output_dir, showWarnings = FALSE, recursive = TRUE)
